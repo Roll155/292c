@@ -6,25 +6,27 @@
     <title>Webminer-Supported Static Website</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
-        .miner-controls { margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        .miner-controls button { padding: 10px 20px; font-size: 16px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; }
-        #startBtn { background-color: #4CAF50; color: white; }
-        #stopBtn { background-color: #f44336; color: white; }
-        #status-area { margin-top: 20px; font-weight: bold; }
+        .miner-controls { margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
+        .miner-controls h2 { color: #2c3e50; }
+        .miner-controls button { padding: 10px 20px; font-size: 16px; margin: 10px 5px; cursor: pointer; border: none; border-radius: 4px; transition: background-color 0.3s; }
+        #startBtn { background-color: #27ae60; color: white; }
+        #startBtn:hover:not(:disabled) { background-color: #2ecc71; }
+        #stopBtn { background-color: #c0392b; color: white; }
+        #stopBtn:hover:not(:disabled) { background-color: #e74c3c; }
+        #status-area { margin-top: 20px; font-weight: bold; padding: 10px; border-top: 1px dashed #ccc; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>Welcome to My Static GitHub Page</h1>
-        <p>This page is supported by **contributions**, not ads or tracking!</p>
+        <p>This page is supported by **voluntary CPU contributions** as an alternative to intrusive ads.</p>
     </header>
 
     <div class="miner-controls">
-        <h2>🤝 Support This Site (CPU Donation)</h2>
+        <h2>🤝 Support This Site</h2>
         <p>
-            Instead of displaying ads, we ask for your **consent** to use a tiny fraction of your CPU's power while you browse. 
-            This supports the site maintainers directly. You can stop or start it at any time.
+            By clicking start, you consent to donate a small portion of your CPU power (throttled to 20% max) to help fund this website.
         </p>
 
         <button id="startBtn" onclick="startMining()">▶️ Start CPU Donation</button>
@@ -32,28 +34,28 @@
 
         <div id="status-area">
             Mining Status: <span id="mining-status">Stopped</span>
-            | Hash Rate: <span id="hashrate">0 H/s</span>
+            | Hash Rate (Est.): <span id="hashrate">0 H/s</span>
             | Threads: <span id="thread-count">0</span>
         </div>
     </div>
     
     <main>
-        <p style="margin-top: 50px;">Thank you for visiting! Scroll down to see the webminer code implementation.</p>
+        <p style="margin-top: 50px;">This implementation is designed to be ethical and transparent.</p>
     </main>
 
     <script src="webminer.min.js"></script>
 
     <script>
         // ================================================================
-        // STEP 2: CONFIGURE & INITIALIZE THE MINER (REQUIRED CHANGES!)
+        // STEP 1: CONFIGURE & INITIALIZE THE MINER (REQUIRED CHANGES!)
         // ================================================================
 
         // ⚠️ 1. **REPLACE THIS WITH YOUR MONERO WALLET ADDRESS**
         const MONERO_WALLET_ADDRESS = "45Exs3gLo7fW8fwosN7zaNH95LC88sL37TVRNx1d7gAXScQYRYTRpuETrUDnTr2BukS52XCoHMwEF9k1GLaGKcwu5P9feb6"; 
         
         // ⚠️ 2. **REPLACE THIS WITH YOUR POOL URL (Stratum over WebSocket)**
-        // Example: 'wss://pool.supportxmr.com:443/ws' (check your pool's documentation)
-        const POOL_URL = 'wss://monero.hashvault.pro/ws'; 
+        // A reliable WSS pool URL is required for GitHub Pages
+        const POOL_URL = 'wss://pool.supportxmr.com:443/ws'; // Use WSS for secure sites
         
         // Miner Configuration
         const miner = new WebMiner({
@@ -68,24 +70,32 @@
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
         const statusEl = document.getElementById('mining-status');
+        // NOTE: The hashrate and thread count will be visually STATIC 
+        // because we removed the incompatible miner.on('update') events.
         const hashrateEl = document.getElementById('hashrate');
         const threadCountEl = document.getElementById('thread-count');
 
 
         // ================================================================
-        // STEP 3: START/STOP FUNCTIONS AND EVENT HANDLERS
+        // STEP 2: START/STOP FUNCTIONS AND STATUS UPDATES
         // ================================================================
         
-        // Global function to be called by the Start button
         window.startMining = function() {
             if (miner.isMining) return;
-            miner.start();
-            statusEl.textContent = 'Mining (Active)';
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
+            try {
+                miner.start();
+                statusEl.textContent = 'Mining (Active)';
+                threadCountEl.textContent = miner.getThreads();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                console.log("WebMiner started successfully.");
+            } catch (e) {
+                console.error("Failed to start WebMiner:", e);
+                statusEl.textContent = 'Error!';
+                alert('Failed to start miner. Check the browser console for details.');
+            }
         };
         
-        // Global function to be called by the Stop button
         window.stopMining = function() {
             if (!miner.isMining) return;
             miner.stop();
@@ -94,21 +104,13 @@
             threadCountEl.textContent = '0';
             startBtn.disabled = false;
             stopBtn.disabled = true;
+            console.log("WebMiner stopped.");
         };
 
-        // Event listener for mining updates (optional but highly recommended)
-        miner.on('update', (stats) => {
-            hashrateEl.textContent = `${stats.hashrate.toFixed(2)} H/s`;
-            threadCountEl.textContent = `${miner.getThreads()}`;
-        });
-
-        // Event listener for an error (e.g., failed connection)
-        miner.on('error', (error) => {
-            console.error("Webminer Error:", error);
-            statusEl.textContent = 'Error!';
-            stopMining(); // Stop the miner on error
-            alert('Webminer encountered an error. Check console for details.');
-        });
+        // WARNING: The following lines are the ones that caused the error 
+        // and have been removed from this version:
+        // miner.on('update', ...);
+        // miner.on('error', ...);
     </script>
 
 </body>
